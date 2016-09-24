@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>ACE in Action</title>
+<link rel="stylesheet" href="./main.css" media="screen" title="no title" charset="utf-8"/>
+</head>
+<body>
+
+<div id="left-side-container">
+  <div id="editor" style="height: calc(100vh - 100px); width: 40vw">
+    function setArray(arr) {
+      console.log("a," + arr);
+    }
+    function swap(idx1, idx2) {
+      console.log("s," + idx1 + "," + idx2);
+    }
+    function updatePointer(color, idx) {
+      console.log("p," + color + "," + idx);
+    }
+    function mutate(idx, updatedValue) {
+      console.log("m," + idx + "," + updatedValue);
+    }
+
+    var a = [34, 203, 3, 746, 200, 984, 198, 764, 9];
+
+    function bubbleSort(a)
+    {
+        var swapped;
+        do {
+            swapped = false;
+            for (var i=0; i < a.length-1; i++) {
+              updatePointer("green", i)
+                if (a[i] > a[i+1]) {
+                    var temp = a[i];
+                    a[i] = a[i+1];
+                    a[i+1] = temp;
+                    swap(i, i+1)
+                    swapped = true;
+                }
+            }
+        } while (swapped);
+    }
+
+    setArray(a);
+    bubbleSort(a);
+  </div>
+
+  <div class="actions">
+    <h1 onClick="runCode()">
+      RUN
+    </h1>
+    <h1 onClick="nextAction()">
+      Next
+    </h1>
+  </div>
+</div>
+
+<div id="array-container">
+  <div id="array">
+  </div>
+</div>
+
+<script src="./ace-builds/src-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    editor.getSession().setMode("ace/mode/javascript");
+
+    function runCode() {
+      console.log('running code');
+      var oldLog = console.log;
+      console.log = function (input) {
+          parseInput(input);
+          oldLog.apply(console, array);
+          oldLog.apply(console, arguments);
+      }
+
+
+      eval(editor.getValue());
+      actionQueue.push(null);
+      console.log = oldLog;
+      console.log(actionQueue);
+    }
+
+    var array = [];
+    var arrayElementContainers = [];
+    var arrayElements = [];
+    var arrayPointerContainers = [];
+    var actionQueue = [null];
+    var actionQueueIdx = 0;
+    function parseInput(input) {
+      switch (input[0]) {
+        case "a":
+          setArray(input);
+          break;
+        case "s":
+          addSwapElementsAction(input);
+          break;
+        case "p":
+          addUpdatePointerAction(input);
+          break;
+        case "m":
+          addMutateIdxAction(input);
+          break;
+        default:
+      }
+    }
+
+    function clearPrevArray() {
+      var oldArry = document.getElementById("array");
+      var arrayContainer = document.getElementById("array-container");
+
+      var newArray = document.createElement("DIV");
+      newArray.id = "array";
+
+      arrayContainer.removeChild(oldArry);
+      arrayContainer.appendChild(newArray);
+    }
+
+    function resetValues() {
+      array = [];
+      arrayElementContainers = [];
+      arrayElements = [];
+      arrayPointerContainers = [];
+      actionQueue = [null];
+      actionQueueIdx = 0;
+      colorsCurrentlyUsed = {};
+      colorPosition = {};
+      colorPointer = {};
+      pointers = {};
+      prevSwapped = [0,0];
+      currentMutatedIdx = 0;
+    }
+
+    function setArray(input) {
+      clearPrevArray();
+      resetValues();
+
+      array = input.split(",").slice(1,input.length).map(function(el) {return parseInt(el)});
+      var arrayElement = document.getElementById("array");
+      var idx = 0;
+
+      array.forEach(function addElementToArray(ele) {
+        var newArrayBoxContainer = document.createElement("DIV");
+        newArrayBoxContainer.className = "array-box-container";
+
+        var newPointerContainer = document.createElement("DIV");
+        newPointerContainer.className = "array-pointer-container";
+
+        var newArrayElContainer = document.createElement("DIV");
+        newArrayElContainer.className = "array-element-container";
+
+        var newArrayEl = document.createElement("DIV");
+        newArrayEl.className = "array-element";
+        newArrayEl.innerHTML = ele;
+
+        arrayElements.push(newArrayEl);
+        arrayElementContainers.push(newArrayElContainer);
+        arrayPointerContainers.push(newPointerContainer)
+
+        newArrayElContainer.appendChild(newArrayEl);
+
+        indexNumber = document.createElement("DIV");
+        indexNumber.innerHTML = idx;
+        indexNumber.className = "idx";
+        idx++
+        newArrayBoxContainer.appendChild(newArrayElContainer)
+        newArrayBoxContainer.appendChild(indexNumber);
+        newArrayBoxContainer.appendChild(newPointerContainer);
+
+        newArrayBoxContainer.style.width = (100/array.length) + "%";
+        var height = window.innerWidth * .4 / array.length;
+        newArrayElContainer.style.height = height + "px";
+
+        newArrayEl.style = "font-size: " + 20 / array.length + "em;";
+
+        arrayElement.appendChild(newArrayBoxContainer);
+      })
+    }
+
+    function addSwapElementsAction(input) {
+      actionQueue.push({ type: "swap", details: [input[2], input[4]]});
+    }
+    function addUpdatePointerAction(input) {
+      var options = input.split(",");
+      actionQueue.push({ type: "pointerUpdate", details: {color: options[1], position: options[2]}});
+    }
+    function addMutateIdxAction(input) {
+      var options = input.split(",");
+      actionQueue.push({ type: "mutate", details: {position: options[1], value: options[2]}});
+    }
+
+    document.addEventListener('keydown', function(e){
+      if(e.keyCode === 39){
+        nextAction();
+      }
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.keyCode === 37){
+        prevAction();
+      }
+    });
+
+    function nextAction() {
+      actionQueueIdx++;
+      if (actionQueueIdx < actionQueue.length) {
+        animateAction(actionQueue[actionQueueIdx])
+      } else {
+        actionQueueIdx--;
+      }
+    }
+
+    function prevAction() {
+      actionQueueIdx--;
+      if (actionQueueIdx > -1) {
+        animateAction(actionQueue[actionQueueIdx])
+      } else {
+        actionQueueIdx++;
+      }
+    }
+
+    function animateAction(action) {
+      clearSwapsAndMutates();
+
+      if (action) {
+        switch (action.type) {
+          case "swap":
+
+            animateSwap(action);
+            break;
+          case "pointerUpdate":
+            animatePointerUpdate(action);
+            break;
+          case "mutate":
+            animateMutate(action);
+            break;
+          default:
+        }
+      } else {
+        removePointers();
+      }
+    }
+
+    function removePointers() {
+      Object.keys(colorsCurrentlyUsed).forEach(function(color) {
+        arrayPointerContainers[colorPosition[color]].removeChild(pointers[color])
+      })
+
+      colorsCurrentlyUsed = {};
+      colorPosition = {};
+      colorPointer = {};
+      pointers = {};
+      prevSwapped = [0,0];
+    }
+
+    function clearSwapsAndMutates() {
+      prevSwapped.forEach(function(idx) {
+        arrayElementContainers[idx].style.background = "rgba(0,0,0,0)";
+      })
+      arrayElementContainers[currentMutatedIdx].style.background = "rgba(0,0,0,0)";
+    }
+
+    // details: [input[2], input[4]]}
+    var prevSwapped = [0,0];
+    function animateSwap(action) {
+      clearSwapsAndMutates();
+      // debugger;
+      var temp = array[action.details[0]];
+
+      arrayElements[action.details[0]].innerHTML = array[action.details[1]];
+      arrayElements[action.details[1]].innerHTML = temp;
+
+      array[action.details[0]] = array[action.details[1]];
+      array[action.details[1]] = temp;
+      arrayElementContainers[action.details[0]].style.background = "red";
+      arrayElementContainers[action.details[1]].style.background = "red";
+
+      prevSwapped = action.details;
+    }
+
+    //color: options[1], position: options[2]
+    var colorsCurrentlyUsed = {};
+    var colorPosition = {};
+    var colorPointer = {};
+    var pointers = {};
+    function animatePointerUpdate(action) {
+      if (colorsCurrentlyUsed[action.details.color]) {
+        movePointer(action.details.color, action.details.position);
+      } else {
+        addPointer(action.details.color, action.details.position);
+      }
+    }
+
+    function movePointer(color, position) {
+      arrayPointerContainers[colorPosition[color]].removeChild(pointers[color])
+      arrayPointerContainers[position].appendChild(pointers[color]);
+      colorPosition[color] = position;
+    }
+
+    function addPointer(color, position) {
+      var newPointer = document.createElement("DIV");
+      newPointer.style.background = color;
+      newPointer.className = "array-pointer";
+      newPointer.innerHTML = "p";
+
+      colorPosition[color] = position;
+      colorsCurrentlyUsed[color] = true;
+      pointers[color] = newPointer;
+
+      arrayPointerContainers[position].appendChild(newPointer);
+    }
+
+    // {position: options[1], value: options[2]}
+    var currentMutatedIdx = 0;
+    function animateMutate(action) {
+      arrayElements[action.details.position].innerHTML = action.details.value;
+      arrayElementContainers[action.details.position].style.background = "red";
+      currentMutatedIdx = action.details.position;
+    }
+
+    setArray("s,0,0,0,0,0,0,0,0,0,0,0");
+</script>
+</body>
+</html>
