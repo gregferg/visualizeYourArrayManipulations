@@ -36,8 +36,18 @@ div {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-top: 30vh;
+}
+
+#right-container {
   height: 100vh;
   width: 100%;
+}
+
+.information {
+  display: flex;
+  flex-direction: column;
+  margin-left: 10%
 }
 
 .array-box-container {
