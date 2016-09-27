@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>ACE in Action</title>
+<title>Array Visualizer</title>
 <link rel="stylesheet" href="./main.css" media="screen" title="no title" charset="utf-8"/>
 </head>
 <body>
@@ -23,6 +23,9 @@
     function displayError(e) {
       console.log("e," + e);
     }
+    function displayValue(name, value) {
+      console.log("d," + name + "," + value);
+    }
 
     var a = [34, 203, 3, 746, 200, 984, 198, 764, 9];
 
@@ -31,6 +34,7 @@
         var swapped;
         do {
             swapped = false;
+            displayValue("swapped", swapped);
             for (var i=0; i < a.length-1; i++) {
               updatePointer("green", i)
                 if (a[i] > a[i+1]) {
@@ -39,6 +43,7 @@
                     a[i+1] = temp;
                     swap(i, i+1)
                     swapped = true;
+                    displayValue("swapped", swapped);
                 }
             }
         } while (swapped);
@@ -69,10 +74,13 @@
     <div class="information">
       <div class="display-values-container">
         <h1>Display Values</h1>
-        <div class="display-values" />
+        <div id="display-values" />
       </div>
 
       <div id="errors-container" />
+      <div onClick="playCode()">
+        Play Code!
+      </div>
     </div>
   </div>
 </div>
@@ -122,6 +130,9 @@
       case "m":
         addMutateIdxAction(input);
         break;
+      case "d":
+        updateDisplayedValue(input);
+        break;
       case "e":
         addDisplayError(input);
         break;
@@ -130,7 +141,17 @@
   }
 
   function addDisplayError(input) {
-    actionQueue.push({type: "error", details: input.split(",")[1]})
+    actionQueue.push({type: "error", details: input.split(",")[1]});
+  }
+
+  function updateDisplayedValue(input) {
+    actionQueue.push({
+      type: "updateDisplay",
+      details: {
+        "title": input.split(",")[1],
+        "value": input.split(",")[2]
+      }
+    });
   }
 
   function clearPrevArray() {
@@ -230,26 +251,31 @@
   });
 
   function nextAction() {
-    actionQueueIdx++;
     if (actionQueueIdx < actionQueue.length) {
       animateAction(actionQueue[actionQueueIdx])
-    } else {
-      actionQueueIdx--;
+      actionQueueIdx++;
+    }
+  }
+
+  function playCode() {
+    if (actionQueueIdx < actionQueue.length) {
+      nextAction();
+
+      setTimeout(playCode, 50);
     }
   }
 
   function prevAction() {
-    actionQueueIdx--;
     if (actionQueueIdx > -1) {
       animateAction(actionQueue[actionQueueIdx])
-    } else {
-      actionQueueIdx++;
+      actionQueueIdx--;
     }
   }
 
   function animateAction(action) {
     clearSwapsAndMutates();
     clearError();
+    clearDisplayedValuedHighlight();
 
     if (action) {
       switch (action.type) {
@@ -265,10 +291,48 @@
         case "error":
           animateError(action);
           break;
+        case "updateDisplay":
+          animateUpdateDisplay(action);
+          break;
         default:
       }
     } else {
       removePointers();
+    }
+  }
+
+  //details: {input.split(",")[1], input.split(",")[2]}
+  var valuesDisplayed = {};
+  var values = {};
+  var lastChangedDisplay = null;
+  function animateUpdateDisplay(action) {
+
+    var title = action.details["title"];
+    var value = action.details["value"];
+
+    if (!valuesDisplayed[title]) {
+      var displayedValues = document.getElementById("display-values");
+      var newDisplayValue = document.createElement("DIV");
+      newDisplayValue.innerHTML = title + ": " + value;
+      newDisplayValue.style.background = "yellow";
+      lastChangedDisplay = newDisplayValue;
+      values[title] = value;
+
+      valuesDisplayed[title] = newDisplayValue;
+      displayedValues.appendChild(newDisplayValue);
+    } else {
+      if (values[title] !== value) {
+        valuesDisplayed[title].innerHTML = title + ": " + value;
+        valuesDisplayed[title].style.background = "yellow";
+        lastChangedDisplay = valuesDisplayed[title];
+        values[title] = value;
+      }
+    }
+  }
+
+  function clearDisplayedValuedHighlight() {
+    if (lastChangedDisplay) {
+      lastChangedDisplay.style.background = "rgba(0,0,0,0)";
     }
   }
 
